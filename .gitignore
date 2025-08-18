@@ -1,5 +1,5 @@
 # python
-__pycache__/
+__pycache__
 *.pyc
 *.pyo
 *.pyd
@@ -15,5 +15,27 @@ dist/
 env/
 *.env
 
+
+# Tests
+*.log
+*.out
+*.tmp
+*.coverage
+.coverage.*
+.cache/
+.pytest_cache
+
 # user
-*vscode
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# misc
+*.bak
+*.swp
+
+# environment variables
+.env
+.env.*

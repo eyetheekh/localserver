@@ -1,0 +1,43 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# stage 1: Run tests
+test:
+  stage: test
+  image: python:3.10
+  before_script:
+    - pip install --upgrade pip setuptools wheel pytest
+  script:
+    - PYTHONPATH=. pytest  # run all tests
+  only:
+    - main
+
+# stage 2: Build package
+build:
+  stage: build
+  image: python:3.10
+  script:
+    - python -m pip install --upgrade setuptools wheel
+    - python setup.py sdist bdist_wheel
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - main
+
+
+# stage 3: deploy to TestPyPI
+deploy:
+  stage: deploy
+  image: python:3.10
+  before_script:
+    - pip install --upgrade twine
+  script:
+    - twine upload --repository testpypi -u $TESTPYPI_USERNAME -p $TESTPYPI_PASSWORD dist/*
+  only:
+    - main
