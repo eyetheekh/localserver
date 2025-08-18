@@ -14,8 +14,9 @@ test:
     - pip install --upgrade pip setuptools wheel pytest
   script:
     - PYTHONPATH=. pytest  # run all tests
-  only:
-    - main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'   # also test on tags
 
 # stage 2: Build package
 build:
@@ -27,11 +28,11 @@ build:
   artifacts:
     paths:
       - dist/
-  only:
-    - main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
 
-
-# stage 3: deploy to TestPyPI
+# stage 3: deploy to TestPyPI (only tags)
 deploy:
   stage: deploy
   image: python:3.10
@@ -39,5 +40,5 @@ deploy:
     - pip install --upgrade twine
   script:
     - twine upload --repository testpypi -u $TESTPYPI_USERNAME -p $TESTPYPI_PASSWORD dist/*
-  only:
-    - main
+  rules:
+    - if: '$CI_COMMIT_TAG'   # deploy only on tags
