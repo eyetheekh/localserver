@@ -4,11 +4,11 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description="Run local static file server")
-    parser.add_argument("-b", "--host", default="0.0.0.0")
+    parser.add_argument("-b", "--bind", default="0.0.0.0")
     parser.add_argument("-p", "--port", type=int, default=8000)
     args = parser.parse_args()
 
-    server = LocalServer(host=args.host, port=args.port)
+    server = LocalServer(host=args.bind, port=args.port)
     server.start_server()
 
 

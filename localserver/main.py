@@ -1,7 +1,8 @@
 import os
 import socket
 import mimetypes
-from typing import Any, Dict, Tuple, IO
+from email.utils import formatdate  # for RFC compliance
+from typing import Dict, Tuple
 
 
 class LocalServer:
@@ -23,7 +24,7 @@ class LocalServer:
         response_headers: Dict[str, str] = None,  # pyright: ignore[reportArgumentType]
     ) -> Tuple[str, int, str, str, Dict]:
         if response_headers is None:
-            response_headers = {"Content-Type": "text/plain"}
+            response_headers = {"Content-Type": "text/plain;charset=utf-8"}
         return self.http_version, status_code, msg, content, response_headers
 
     def send_file_response(
@@ -70,6 +71,27 @@ class LocalServer:
             print(f"Error sending file {file_path}: {e}")
             self.send_error_response(client_socket, 500, "Internal Server Error")
 
+    def send_headers_only(
+        self,
+        client_socket: socket.socket,
+        response_headers: Dict[str, str],
+        status_code: int,
+        msg: str,
+    ) -> None:
+        try:
+            formatted_headers = "\r\n".join(
+                f"{key}: {value}" for key, value in response_headers.items()
+            )
+
+            header_response = f"{self.http_version} {status_code} {msg}\r\n{formatted_headers}\r\n\r\n"
+            client_socket.sendall(header_response.encode("utf-8"))
+        except Exception as e:
+            print(f"Error sending headers: {e}")
+            self.send_error_response(client_socket, 500, "Internal Server Error")
+
+        finally:
+            del formatted_headers, header_response
+
     def send_response(
         self,
         client_socket: socket.socket,
@@ -94,46 +116,131 @@ class LocalServer:
         except Exception as e:
             print(f"Error sending response: {e}")
 
+        finally:
+            del content_bytes, formatted_headers, response
+
     def send_error_response(
         self, client_socket: socket.socket, status_code: int, message: str
     ):
         """send error response"""
         try:
             content = f"<html><body><h1>{status_code} {message}</h1></body></html>"
-            response_headers = {"Content-Type": "text/html", "Connection": "close"}
+            response_headers = {
+                "Content-Type": "text/html;charset=utf-8",
+                "Connection": "close",
+            }
             self.send_response(
                 client_socket, response_headers, status_code, message, content
             )
         except Exception as e:
             print(f"Error sending error response: {e}")
 
+    def handle_head_request(self, abs_path: str, client_socket: socket.socket):
+        try:
+            """handles head request"""
+            if os.path.isfile(abs_path):
+                file_size = os.path.getsize(abs_path)
+
+                # get mime type
+                mime_type, _ = mimetypes.guess_type(abs_path)
+                if mime_type is None:
+                    mime_type = "application/octet-stream"
+
+                headers = {
+                    "Date": str(formatdate(timeval=None, localtime=False, usegmt=True)),
+                    "Content-Length": str(file_size),
+                    "Content-Type": mime_type,
+                    "Connection": "close",
+                }
+
+                self.send_headers_only(
+                    client_socket,
+                    headers,
+                    200,
+                    "OK",
+                )
+
+            elif os.path.isdir(abs_path):
+                # get mime type
+                mime_type, _ = mimetypes.guess_type(abs_path)
+                if mime_type is None:
+                    mime_type = "application/octet-stream"
+
+                headers = {
+                    "Date": str(formatdate(timeval=None, localtime=False, usegmt=True)),
+                    "Content-Type": mime_type,
+                    "Content-Length": 0,
+                    "Connection": "close",
+                }
+
+                self.send_headers_only(
+                    client_socket,
+                    headers,
+                    200,
+                    "OK",
+                )
+
+            else:
+                headers = {
+                    "Date": str(formatdate(timeval=None, localtime=False, usegmt=True)),
+                    "Content-Length": 0,
+                    "Content-Type": "text/html;charset=utf-8",
+                    "Connection": "close",
+                }
+                self.send_headers_only(
+                    client_socket,
+                    headers,
+                    404,
+                    "Not Found",
+                )
+
+        except PermissionError:
+            self.send_error_response(client_socket, 403, "Forbidden")
+
+    def handle_get_request(
+        self,
+        request_path: str,
+        abs_path: str,
+        client_socket: socket.socket,
+    ):
+        """handle get request"""
+
+        if request_path == "/favicon.ico":
+            self.send_error_response(client_socket, 404, "Not Found")
+            return
+
+        if os.path.isdir(abs_path):
+            self.handle_directory_listing(client_socket, abs_path, request_path)
+
+        elif os.path.isfile(abs_path):
+            self.send_file_response(client_socket, abs_path)
+
+        else:
+            self.send_error_response(client_socket, 404, "Not Found")
+
     def handle_request(
         self,
         client_socket: socket.socket,
-        request: str,
         request_path: str,
+        method: str,
     ) -> None:
         try:
             # decode url encoded paths
             request_path = request_path.replace("%20", " ")  # "%20" is space
+            print(request_path)
+            clean_path = request_path.lstrip("/")
+            abs_path = os.path.abspath(os.path.join(os.getcwd(), clean_path))
 
-            if request_path == "/":
-                self.handle_directory_listing(client_socket, os.getcwd())
-            else:
-                clean_path = request_path.lstrip("/")
-                abs_path = os.path.abspath(os.path.join(os.getcwd(), clean_path))
+            # check if path is within current directory to avoid lookbacks to prarent dirs
+            if not abs_path.startswith(os.getcwd()):
+                self.send_error_response(client_socket, 403, "Forbidden")
+                return
 
-                # check if path is within current directory to avoid lookbacks to prarent dirs
-                if not abs_path.startswith(os.getcwd()):
-                    self.send_error_response(client_socket, 403, "Forbidden")
-                    return
+            if method == "HEAD":
+                self.handle_head_request(abs_path, client_socket)
 
-                if os.path.isdir(abs_path):
-                    self.handle_directory_listing(client_socket, abs_path, request_path)
-                elif os.path.isfile(abs_path):
-                    self.send_file_response(client_socket, abs_path)
-                else:
-                    self.send_error_response(client_socket, 404, "Not Found")
+            elif method == "GET":
+                self.handle_get_request(request_path, abs_path, client_socket)
 
         except Exception as e:
             print(f"Error handling request: {e}")
@@ -147,7 +254,7 @@ class LocalServer:
             files_and_dirs = os.listdir(dir_path)
             files_and_dirs.sort()
 
-            response_headers = {"Content-Type": "text/html"}
+            response_headers = {"Content-Type": "text/html;charset=utf-8"}
 
             # html content template
             content = f"""
@@ -170,7 +277,6 @@ class LocalServer:
             # add  link to parent directory if request path is not at root
             if request_path != "/":
                 parent_path = "/".join(request_path.rstrip("/").split("/")[:-1]) or "/"
-                print("parent_path", parent_path)
                 content += f'<li><a href="{parent_path}">..(Parent Directory)</a></li>'
 
             for item in files_and_dirs:
@@ -227,11 +333,14 @@ class LocalServer:
 
                 try:
                     # Set socket timeout to prevent hanging
-                    client_socket.settimeout(30.0)
+                    client_socket.settimeout(5.0)
 
                     request = client_socket.recv(4096).decode("utf-8")
                     if not request.strip():
                         print("Empty request received")
+                        self.send_error_response(
+                            client_socket, 400, "Empty Request Received"
+                        )
                         continue
 
                     # Parse request line
@@ -254,14 +363,15 @@ class LocalServer:
                     method, path, http_version = request_parts
                     print(f"Request: {method} {path} {http_version}")
 
-                    # Only handle GET requests for now
-                    if method != "GET":
+                    # handle GET & HEAD requests
+                    if method not in {"HEAD", "GET"}:
                         self.send_error_response(
-                            client_socket, 405, "Method Not Allowed"
+                            client_socket, 501, "Method Not Allowed"
                         )
                         continue
 
-                    self.handle_request(client_socket, request, path)
+                    # handle the request
+                    self.handle_request(client_socket, path, method)
 
                 except socket.timeout:
                     print("Client connection timed out")
