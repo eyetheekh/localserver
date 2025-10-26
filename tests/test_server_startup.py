@@ -58,3 +58,51 @@ def test_send_file_response():
     server.send_file_response(dummy, file_path, 200, "OK")  # type: ignore
 
     assert b"This is a test file." in dummy.data
+
+
+def test_handle_head_request_for_file():
+    file_path = Path("test.txt")
+    file_path.write_text("HEAD test content")
+
+    server = LocalServer()
+    dummy = DummySocket()
+
+    server.handle_request(dummy, f"/{file_path.name}", "HEAD")  # pyright: ignore[reportArgumentType]
+
+    # Check headers only, no body
+    assert b"200 OK" in dummy.data
+    assert b"Content-Type" in dummy.data
+    assert b"Content-Length" in dummy.data
+    assert b"HEAD test content" not in dummy.data
+
+
+def test_handle_head_request_missing_file():
+    server = LocalServer()
+    dummy = DummySocket()
+
+    server.handle_request(dummy, "/nonexistent.txt", "HEAD")  # pyright: ignore[reportArgumentType]
+
+    assert b"404 Not Found" in dummy.data
+    assert b"Content-Length: 0" in dummy.data
+
+
+def test_handle_get_request_for_file():
+    file_path = Path("sample.txt")
+    file_path.write_text("GET test content")
+
+    server = LocalServer()
+    dummy = DummySocket()
+
+    server.handle_request(dummy, f"/{file_path.name}", "GET")  # pyright: ignore[reportArgumentType]
+
+    assert b"200 OK" in dummy.data
+    assert b"GET test content" in dummy.data
+
+
+def test_handle_get_request_missing_file():
+    server = LocalServer()
+    dummy = DummySocket()
+
+    server.handle_request(dummy, "/missing.txt", "GET")  # pyright: ignore[reportArgumentType]
+
+    assert b"404 Not Found" in dummy.data
