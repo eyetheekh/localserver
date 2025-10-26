@@ -1,3 +1,4 @@
+from pathlib import Path
 from localserver.main import LocalServer
 
 
@@ -13,13 +14,13 @@ class DummySocket:
     a fake socket objct used for testing LocalServer responses without a network connection.
     DummySocket acts as a stand-in for a real socket:
 
-    how it works: 
+    how it works:
     the server normally sends data using the socket object's methods like:
     - 1 : send()
     - 2 : sendall()
     - 3 : sendfile()
     DummySocket has these same methods, which technically makes it seem like a sokcet object.
-    This way 
+    This way
 
     server.send_response(dummy, ..., ..., ..., content)
             └─> dummy.send(data) → stores data in dummy.data
@@ -47,16 +48,13 @@ def test_send_response():
     assert b"hello" in dummy.data
 
 
-def test_send_file_response(tmp_path):
+def test_send_file_response():
     # example test file
-    file_path = tmp_path / "test.txt"
+    file_path = Path("test.txt")
     file_path.write_text("This is a test file.")
 
     server = LocalServer()
     dummy = DummySocket()
-    with open(file_path, "rb") as f:
-        server.send_file_response(dummy, {}, 200, "OK", f)  # type: ignore
+    server.send_file_response(dummy, file_path, 200, "OK")  # type: ignore
 
-    assert dummy.file_sent == b"This is a test file."
-
-
+    assert b"This is a test file." in dummy.data
