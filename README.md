@@ -28,3 +28,4 @@ localserver -b <host> -p <port>
 # Known Issues
 - HEAD requests are not yet implemented.
 - File responses can sometimes be slow.
+- keep-alive connections.
