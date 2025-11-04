@@ -1,9 +1,11 @@
-# localserver
+# Localserver
 
-A simple Python HTTP filesystem server.  
-Think of it as a lightweight alternative to `python -m http.server`, packaged with a CLI.
-
+A simple python HTTP local file server, inspired from Blade Runner 2049 aesthetics.
+![Blade Runner Inspired Theme](assets/image.png)
 ---
+
+# Why?
+``` python -m http.server ``` didn't have RGB :)
 
 ## Installation
 
@@ -26,6 +28,5 @@ localserver -b <host> -p <port>
 ```
 
 # Known Issues
-- HEAD requests are not yet implemented.
 - File responses can sometimes be slow.
 - keep-alive connections.
