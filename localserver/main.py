@@ -124,11 +124,82 @@ class LocalServer:
     ):
         """send error response"""
         try:
-            content = f"<html><body><h1>{status_code} {message}</h1></body></html>"
-            response_headers = {
-                "Content-Type": "text/html;charset=utf-8",
-                "Connection": "close",
-            }
+            content = f"""
+            <html>
+            <head>
+                <title>{status_code} {message}</title>
+                <style>
+                    body {{
+                        background: radial-gradient(circle at center, #0f0f1a, #050510);
+                        color: #f0f0ff;
+                        font-family: 'Orbitron', sans-serif;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                        overflow: hidden;
+                    }}
+                    h1 {{
+                        font-size: 4rem;
+                        color: #ff00ff;
+                        text-shadow: 0 0 10px #ff00ff, 0 0 30px #ff00ff, 0 0 60px #ff00ff;
+                        animation: flicker 3s infinite;
+                    }}
+                    p {{
+                        font-size: 1.2rem;
+                        color: #00ffff;
+                        text-shadow: 0 0 10px #00ffff;
+                    }}
+                    a {{
+                        color: #00ffcc;
+                        text-decoration: none;
+                        border: 1px solid #00ffcc;
+                        padding: 10px 20px;
+                        margin-top: 20px;
+                        border-radius: 10px;
+                        transition: 0.3s;
+                        box-shadow: 0 0 10px #00ffcc;
+                    }}
+                    a:hover {{
+                        background: #00ffcc;
+                        color: #0b0b17;
+                        box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc;
+                    }}
+                    @keyframes flicker {{
+                        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{ opacity: 1; }}
+                        20%, 24%, 55% {{ opacity: 0.6; }}
+                    }}
+                    @keyframes moveStars {{
+                        from {{ background-position: 0 0; }}
+                        to {{ background-position: 10000px 10000px; }}
+                    }}
+                    body::after {{
+                        content: "";
+                        position: fixed;
+                        top: 0; left: 0;
+                        width: 200%;
+                        height: 200%;
+                        background: transparent url("data:image/svg+xml,\
+                        <svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'>\
+                        <circle cx='1' cy='1' r='1' fill='white' opacity='0.15'/>\
+                        </svg>") repeat;
+                        background-size: 3px 3px;
+                        animation: moveStars 300s linear infinite;
+                        opacity: 0.1;
+                        z-index: -2;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h1>{status_code} {message}</h1>
+                <p>Oops! Something broke the neon grid...</p>
+                <a href="/">Return to Home</a>
+            </body>
+            </html>
+            """
+            response_headers = {"Content-Type": "text/html;charset=utf-8"}
             self.send_response(
                 client_socket, response_headers, status_code, message, content
             )
@@ -256,50 +327,133 @@ class LocalServer:
 
             response_headers = {"Content-Type": "text/html;charset=utf-8"}
 
-            # html content template
             content = f"""
             <html>
             <head>
-                <title>Directory listing for {request_path}</title>
+                <title>Index of {request_path}</title>
                 <style>
-                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
-                    h1 {{ color: #333; }}
-                    a {{ text-decoration: none; color: #0066cc; }}
-                    a:hover {{ text-decoration: underline; }}
-                    li {{ margin: 5px 0; }}
+                    body {{
+                        background: linear-gradient(135deg, #0d0221, #1b0033, #050510);
+                        font-family: 'Orbitron', sans-serif;
+                        margin: 0;
+                        padding: 40px;
+                        color: #f5e1ff;
+                        overflow-x: hidden;
+                    }}
+                    h1 {{
+                        color: #ff00ff;
+                        text-shadow: 0 0 10px #ff00ff, 0 0 30px #ff00ff;
+                        font-size: 2.5rem;
+                        animation: flicker 4s infinite;
+                    }}
+                    ul {{
+                        list-style-type: none;
+                        padding: 0;
+                    }}
+                    li {{
+                        margin: 10px 0;
+                    }}
+                    a {{
+                        color: #00ffff;
+                        text-decoration: none;
+                        font-size: 1.1rem;
+                        text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+                        transition: 0.3s;
+                    }}
+                    a:hover {{
+                        color: #ff00ff;
+                        text-shadow: 0 0 15px #ff00ff, 0 0 40px #ff00ff;
+                        transform: scale(1.1);
+                    }}
+                    .container {{
+                        background: rgba(20, 20, 40, 0.6);
+                        border: 2px solid transparent;
+                        border-radius: 15px;
+                        padding: 30px;
+                        box-shadow: 0 0 20px #ff00ff55, 0 0 40px #00ffff22 inset;
+                        border-image: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff) 1;
+                        animation: borderShift 5s linear infinite;
+                    }}
+                    .footer {{
+                        margin-top: 40px;
+                        color: #888;
+                        font-size: 0.9rem;
+                        text-align: center;
+                    }}
+                    @keyframes flicker {{
+                        0%, 18%, 22%, 25%, 53%, 57%, 100% {{ opacity: 1; }}
+                        20%, 24%, 55% {{ opacity: 0.6; }}
+                    }}
+                    @keyframes borderShift {{
+                        0% {{ border-image: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff) 1; }}
+                        50% {{ border-image: linear-gradient(45deg, #00ffff, #ff00ff, #00ffff) 1; }}
+                        100% {{ border-image: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff) 1; }}
+                    }}
+                    @keyframes gridMove {{
+                        from {{ background-position: 0 0, 0 0; }}
+                        to {{ background-position: 100px 100px, 100px 100px; }}
+                    }}
+                    body::before {{
+                        content: "";
+                        position: fixed;
+                        top: 0; left: 0;
+                        width: 100%; height: 100%;
+                        background:
+                            linear-gradient(90deg, rgba(255, 0, 255, 0.05) 1px, transparent 1px),
+                            linear-gradient(0deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+                        background-size: 40px 40px;
+                        animation: gridMove 20s linear infinite;
+                        z-index: -1;
+                    }}
                 </style>
             </head>
             <body>
-                <h1>Directory listing for {request_path}</h1>
-                <ul>
+                <div class="container">
+                    <h1 id="title">📂 Index of {request_path}</h1>
+                    <ul>
             """
 
-            # add  link to parent directory if request path is not at root
+            # parent directory
             if request_path != "/":
                 parent_path = "/".join(request_path.rstrip("/").split("/")[:-1]) or "/"
-                content += f'<li><a href="{parent_path}">..(Parent Directory)</a></li>'
+                content += f'<li>⬆️ <a href="{parent_path}">Parent Directory</a></li>'
 
             for item in files_and_dirs:
-                if request_path.endswith("/"):
-                    item_url = request_path + item
-                else:
-                    item_url = request_path + "/" + item
-
+                item_url = request_path.rstrip("/") + "/" + item
                 item_path = os.path.join(dir_path, item)
                 if os.path.isdir(item_path):
-                    content += f'<li><a href="{item_url}/">{item}/</a></li>'
+                    content += f'<li>📁 <a href="{item_url}/">{item}/</a></li>'
                 else:
-                    # file size
                     try:
                         size = os.path.getsize(item_path)
                         size_str = self.format_file_size(size)
-                        content += (
-                            f'<li><a href="{item_url}">{item}</a> ({size_str})</li>'
-                        )
+                        content += f'<li>📄 <a href="{item_url}">{item}</a> — <span style="color:#aaa;">{size_str}</span></li>'
                     except OSError:
-                        content += f'<li><a href="{item_url}">{item}</a></li>'
+                        content += f'<li>📄 <a href="{item_url}">{item}</a></li>'
 
-            content += "</ul></body></html>"
+            content += """
+                    </ul>
+                    <div class="footer">🌐 2049</div>
+                </div>
+                <script>
+                let text = document.getElementById("title").innerText;
+                let el = document.getElementById("title");
+                el.innerText = "";
+                let i = 0;
+                function type() {
+                    if (i < text.length) {{
+                        el.innerHTML = text.slice(0, i + 1) + "_";
+                        i++;
+                        setTimeout(type, 80);
+                    }} else {{
+                        el.innerHTML = text;
+                    }}
+                }
+                type();
+                </script>
+            </body>
+            </html>
+            """
 
             self.send_response(client_socket, response_headers, 200, "OK", content)
 
